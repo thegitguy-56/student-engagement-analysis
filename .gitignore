@@ -1,0 +1,72 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments — never commit these
+venv/
+venv311/
+.venv/
+env/
+ENV/
+
+# ── Environment variables — NEVER commit ─────────────────
+.env
+.env.local
+.env.production
+.env.*
+!.env.example
+
+# ── Database ──────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── ML model cache files ──────────────────────────────────
+*.pkl
+*.pickle
+*.h5
+*.pb
+*.onnx
+__pycache__/
+.mediapipe/
+
+# MediaPipe downloads its models at runtime into these:
+/backend/mediapipe_cache/
+/backend/.cache/
+
+# ── Node / Frontend ───────────────────────────────────────
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+*.local
+
+# ── OS files ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Logs ─────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── Misc ─────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
