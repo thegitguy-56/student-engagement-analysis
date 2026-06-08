@@ -3,21 +3,22 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
-# Extract and fix URL for Render (postgres:// → postgresql+asyncpg://)
 DATABASE_URL = settings.DATABASE_URL
 
+# Render gives postgres:// — convert for asyncpg
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Single engine definition using the corrected URL
+# SQLite doesn't support pool_size/max_overflow — only pass them for PostgreSQL
+is_sqlite = "sqlite" in DATABASE_URL
+
 engine = create_async_engine(
     DATABASE_URL,
     echo=settings.DEBUG,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    **({} if is_sqlite else {"pool_size": 10, "max_overflow": 20})
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -36,12 +37,12 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
 async def get_db():
-    async with AsyncSessionLocal() as session:
+    async with AsyncSessionLocal() as db:
         try:
-            yield session
-            await session.commit()
+            yield db
+            await db.commit()
         except Exception:
-            await session.rollback()
+            await db.rollback()
             raise
         finally:
-            await session.close()
+            await db.close()
