@@ -6,6 +6,8 @@ import { getClassroom, startClassroom, endClassroom } from "../services/api";
 import { TeacherClassroomSocket } from "../services/classroomSocket";
 import StudentCard from "../components/StudentCard";
 
+const JITSI_DOMAIN = import.meta.env.VITE_JITSI_DOMAIN || "meet.ffmuc.net";
+
 export default function TeacherClassroomRoom() {
   const { roomCode } = useParams();
   const { user } = useAuth();
@@ -41,7 +43,7 @@ export default function TeacherClassroomRoom() {
     const loadJitsi = () => {
       if (!jitsiContainerRef.current) return;
 
-      const domain = "meet.jit.si";
+      const domain = JITSI_DOMAIN;
       const options = {
         roomName: `EngagementAnalysis-${roomCode}`,
         width: "100%",
@@ -69,7 +71,7 @@ export default function TeacherClassroomRoom() {
       loadJitsi();
     } else {
       const script = document.createElement("script");
-      script.src = "https://meet.jit.si/external_api.js";
+      script.src = `https://${JITSI_DOMAIN}/external_api.js`;
       script.async = true;
       script.onload = loadJitsi;
       document.body.appendChild(script);

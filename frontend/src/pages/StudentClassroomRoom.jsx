@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { getClassroom } from "../services/api";
 import EngagementOverlay from "../components/EngagementOverlay";
 
+const JITSI_DOMAIN = import.meta.env.VITE_JITSI_DOMAIN || "meet.ffmuc.net";
+
 export default function StudentClassroomRoom() {
   const { roomCode } = useParams();
   const { user } = useAuth();
@@ -67,7 +69,7 @@ export default function StudentClassroomRoom() {
           DEFAULT_BACKGROUND: "#111827",
         },
       };
-      jitsiApiRef.current = new window.JitsiMeetExternalAPI("meet.jit.si", options);
+      jitsiApiRef.current = new window.JitsiMeetExternalAPI(JITSI_DOMAIN, options);
       jitsiApiRef.current.addEventListener("readyToClose", () => {
         navigate("/dashboard");
       });
@@ -77,7 +79,7 @@ export default function StudentClassroomRoom() {
       loadJitsi();
     } else {
       const script = document.createElement("script");
-      script.src = "https://meet.jit.si/external_api.js";
+      script.src = `https://${JITSI_DOMAIN}/external_api.js`;
       script.async = true;
       script.onload = loadJitsi;
       document.body.appendChild(script);
