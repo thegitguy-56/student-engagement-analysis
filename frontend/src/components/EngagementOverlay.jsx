@@ -28,6 +28,10 @@ export default function EngagementOverlay({ roomCode, userId, stream }) {
     // Attach the shared stream to the hidden video element
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      // Must call play() explicitly — autoPlay is suppressed on display:none elements
+      // in Chromium-based browsers. Without this, readyState stays < 2 and the
+      // capture interval skips every frame.
+      videoRef.current.play().catch(() => {});
     }
 
     // Connect WebSocket

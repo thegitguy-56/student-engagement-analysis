@@ -1,4 +1,5 @@
 # backend/app/routes/classroom.py
+import asyncio
 import base64
 import json
 import logging
@@ -220,9 +221,14 @@ async def student_ws(
                 logger.warning(f"Frame decode error for user {user_id}: {e}")
                 continue
 
-            # ← Call module-level function directly, not a class method
+            # Offload the blocking CV pipeline to a thread-pool executor.
+            # process_frame() runs MediaPipe + OpenCV (~100–300 ms) — calling it
+            # directly on the event loop would stall every other WS connection.
+            # session.py does this correctly; replicate the same pattern here.
             try:
-                result_data = process_frame(frame)
+                result_data = await asyncio.get_event_loop().run_in_executor(
+                    None, process_frame, frame
+                )
             except Exception as e:
                 logger.error(f"Pipeline error for user {user_id}: {e}")
                 continue

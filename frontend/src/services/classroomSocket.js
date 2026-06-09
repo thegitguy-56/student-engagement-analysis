@@ -13,6 +13,16 @@ if (!WS_BASE) {
     base = base.slice(0, -5);
   }
   WS_BASE = base;
+} else {
+  // Strip any accidental path suffix from VITE_WS_URL (e.g. /api/ws)
+  // and ensure the correct ws:// ↔ wss:// protocol is used.
+  try {
+    const u = new URL(WS_BASE);
+    const proto = u.protocol === "wss:" || u.protocol === "https:" ? "wss://" : "ws://";
+    WS_BASE = proto + u.host;           // host includes port if present
+  } catch {
+    // Malformed URL — leave as-is and let the browser surface the error
+  }
 }
 
 export class StudentClassroomSocket {
@@ -22,9 +32,11 @@ export class StudentClassroomSocket {
     this.onScore = onScore;
     this.ws = null;
     this._reconnectTimer = null;
+    this._destroyed = false;   // set true on intentional disconnect — prevents reconnect loop
   }
 
   connect() {
+    if (this._destroyed) return;
     const url = `${WS_BASE}/api/classroom/ws/${this.roomCode}/student/${this.userId}`;
     this.ws = new WebSocket(url);
 
@@ -36,6 +48,7 @@ export class StudentClassroomSocket {
     };
 
     this.ws.onclose = () => {
+      if (this._destroyed) return;           // don't reconnect after intentional close
       this._reconnectTimer = setTimeout(() => this.connect(), 3000);
     };
 
@@ -49,6 +62,7 @@ export class StudentClassroomSocket {
   }
 
   disconnect() {
+    this._destroyed = true;                  // must be set BEFORE ws.close() fires onclose
     clearTimeout(this._reconnectTimer);
     this.ws?.close();
     this.ws = null;
@@ -63,9 +77,11 @@ export class TeacherClassroomSocket {
     this.ws = null;
     this._pingInterval = null;
     this._reconnectTimer = null;
+    this._destroyed = false;   // set true on intentional disconnect — prevents reconnect loop
   }
 
   connect() {
+    if (this._destroyed) return;
     const url = `${WS_BASE}/api/classroom/ws/${this.roomCode}/teacher/${this.userId}`;
     this.ws = new WebSocket(url);
 
@@ -86,6 +102,7 @@ export class TeacherClassroomSocket {
 
     this.ws.onclose = () => {
       clearInterval(this._pingInterval);
+      if (this._destroyed) return;           // don't reconnect after intentional close
       this._reconnectTimer = setTimeout(() => this.connect(), 3000);
     };
 
@@ -93,6 +110,7 @@ export class TeacherClassroomSocket {
   }
 
   disconnect() {
+    this._destroyed = true;                  // must be set BEFORE ws.close() fires onclose
     clearTimeout(this._reconnectTimer);
     clearInterval(this._pingInterval);
     this.ws?.close();
