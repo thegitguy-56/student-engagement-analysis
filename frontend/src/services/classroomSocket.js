@@ -2,9 +2,18 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// Derive WS base from API base — swap http(s) for ws(s), never add /api
-const WS_BASE = import.meta.env.VITE_WS_URL ||
-  API_BASE.replace("https://", "wss://").replace("http://", "ws://");
+// Derive WS base from API base — swap http(s) for ws(s), stripping /api if present
+// because the socket endpoint URLs manually append /api/classroom/ws/...
+let WS_BASE = import.meta.env.VITE_WS_URL;
+if (!WS_BASE) {
+  let base = API_BASE.replace("https://", "wss://").replace("http://", "ws://");
+  if (base.endsWith("/api")) {
+    base = base.slice(0, -4);
+  } else if (base.endsWith("/api/")) {
+    base = base.slice(0, -5);
+  }
+  WS_BASE = base;
+}
 
 export class StudentClassroomSocket {
   constructor(roomCode, userId, onScore) {
