@@ -66,15 +66,17 @@ function ScoreRing({ score }) {
 }
 
 export default function Monitor() {
-  const webcamRef  = useRef(null)
-  const wsRef      = useRef(null)
+  const webcamRef   = useRef(null)
+  const wsRef       = useRef(null)
   const intervalRef = useRef(null)
-  const navigate   = useNavigate()
+  const sessionIdRef = useRef(null)   // track session id in ref for cleanup
+  const navigate    = useNavigate()
 
   const [sessionId, setSessionId]       = useState(null)
   const [running, setRunning]           = useState(false)
+  const [starting, setStarting]         = useState(false)   // guard against double-click
   const [metrics, setMetrics]           = useState(null)
-  const [scores, setScores]             = useState([])   // last 30 scores for chart
+  const [scores, setScores]             = useState([])
   const [timestamps, setTimestamps]     = useState([])
   const [frameCount, setFrameCount]     = useState(0)
   const [elapsed, setElapsed]           = useState(0)
@@ -87,6 +89,19 @@ export default function Monitor() {
     return () => clearInterval(timer)
   }, [running])
 
+  // Auto-end session if user navigates away without stopping
+  useEffect(() => {
+    return () => {
+      const sid = sessionIdRef.current
+      if (sid) {
+        clearInterval(intervalRef.current)
+        wsRef.current?.disconnect()
+        // Fire-and-forget: end the session in the background
+        api.patch(`/sessions/${sid}/end`).catch(() => {})
+      }
+    }
+  }, [])
+
   const formatTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
 
   const handleWsMessage = useCallback((data) => {
@@ -97,10 +112,13 @@ export default function Monitor() {
   }, [])
 
   const startSession = async () => {
+    if (starting || running) return   // prevent double-start
+    setStarting(true)
     try {
       const res = await api.post('/sessions/', { title })
       const sid = res.data.id
       setSessionId(sid)
+      sessionIdRef.current = sid       // keep ref in sync for cleanup
       setRunning(true)
       setScores([])
       setTimestamps([])
@@ -125,12 +143,15 @@ export default function Monitor() {
       toast.success('Session started!')
     } catch (e) {
       toast.error('Failed to start session')
+    } finally {
+      setStarting(false)
     }
   }
 
   const stopSession = async () => {
     clearInterval(intervalRef.current)
     wsRef.current?.disconnect()
+    sessionIdRef.current = null   // clear so unmount cleanup doesn't double-end
     if (sessionId) {
       await api.patch(`/sessions/${sessionId}/end`).catch(() => {})
     }
@@ -187,8 +208,15 @@ export default function Monitor() {
             <div className="flex items-center gap-2">
               <input value={title} onChange={e => setTitle(e.target.value)}
                 className="input w-48 text-sm py-1.5" placeholder="Session title"/>
-              <button onClick={startSession} className="btn-primary flex items-center gap-2">
-                <Play size={16}/> Start
+              <button
+                onClick={startSession}
+                disabled={starting}
+                className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {starting
+                  ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Starting…</>
+                  : <><Play size={16}/> Start</>
+                }
               </button>
             </div>
           ) : (
@@ -293,7 +321,7 @@ export default function Monitor() {
                     </div>
                     <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                       <div className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                        style={{ width: `${score * 100}%` }}/>
+                        style={{ width: `${score * 100}%`}}/>
                     </div>
                   </div>
                 ))}
